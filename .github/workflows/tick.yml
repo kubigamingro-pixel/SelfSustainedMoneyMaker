@@ -1,11 +1,13 @@
 name: Paper-trading tick
 
-# Re-touched to re-register the cron schedule with GitHub's scheduler
-# (schedule triggers sometimes don't activate until the workflow file
-# gets a fresh push after creation).
+# GitHub's own `schedule` trigger was unreliable (confirmed: went hours with zero
+# self-fired runs, then only intermittent afterward) -- cron-job.org now pings
+# workflow_dispatch every 15 min instead and has been the reliable trigger since.
+# Removed schedule here rather than keep both: no cost difference either way,
+# this just avoids two independent triggers racing into the same tick (the
+# push-conflict handling below still exists as a safety net, but simpler to not
+# rely on it routinely). workflow_dispatch stays for cron-job.org and manual runs.
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 permissions:
