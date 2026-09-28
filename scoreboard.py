@@ -10,8 +10,17 @@ import matplotlib.pyplot as plt
 
 from engine.config import load_tracks_config
 from engine.ledger import Ledger
+from trade_log import round_trips
 
 LOG_DIR = Path(__file__).resolve().parent / "logs"
+
+
+def avg_hold_hours(trades: list, track_name: str) -> float:
+    trips = round_trips(track_name, trades)
+    if not trips:
+        return float("nan")
+    total_seconds = sum(t["duration"].total_seconds() for t in trips)
+    return total_seconds / len(trips) / 3600.0
 
 
 def max_drawdown(equities: list) -> float:
@@ -75,7 +84,7 @@ def main():
         ledger.close()
 
         if not curve:
-            rows.append((track_name, starting_capital, None, None, len(trades), None, None, None))
+            rows.append((track_name, starting_capital, None, None, len(trades), None, None, None, None, None))
             continue
 
         equities = [row[2] for row in curve]
@@ -92,24 +101,26 @@ def main():
         else:
             bh = buy_and_hold_return_pct(curve)
         alpha = return_pct - bh if bh == bh else float("nan")  # nan-safe (bh!=bh means nan)
+        hold_hrs = avg_hold_hours(trades, track_name)
 
-        rows.append((track_name, starting_capital, current_equity, return_pct, len(trades), dd, wr, bh, alpha))
+        rows.append((track_name, starting_capital, current_equity, return_pct, len(trades), dd, wr, bh, alpha, hold_hrs))
 
         xs = list(range(len(equities)))
         plt.plot(xs, equities, label=track_name)
 
-    header = f"{'Track':<32}{'Start':>8}{'Current':>10}{'Return%':>10}{'Trades':>8}{'MaxDD%':>9}{'Win%':>8}{'BuyHold%':>10}{'Alpha%':>10}"
+    header = f"{'Track':<32}{'Start':>8}{'Current':>10}{'Return%':>10}{'Trades':>8}{'MaxDD%':>9}{'Win%':>8}{'BuyHold%':>10}{'Alpha%':>10}{'AvgHold':>10}"
     print(header)
     print("-" * len(header))
     for row in rows:
         if row[2] is None:
-            print(f"{row[0]:<32}{row[1]:>8.2f}{'--':>10}{'--':>10}{row[4]:>8}{'--':>9}{'--':>8}{'--':>10}{'--':>10}")
+            print(f"{row[0]:<32}{row[1]:>8.2f}{'--':>10}{'--':>10}{row[4]:>8}{'--':>9}{'--':>8}{'--':>10}{'--':>10}{'--':>10}")
         else:
-            name, start, current, ret, n_trades, dd, wr, bh, alpha = row
+            name, start, current, ret, n_trades, dd, wr, bh, alpha, hold_hrs = row
             wr_str = "--" if wr != wr else f"{wr:.1f}"  # NaN check
             bh_str = "--" if bh != bh else f"{bh:+.2f}%"
             alpha_str = "--" if alpha != alpha else f"{alpha:+.2f}%"
-            print(f"{name:<32}{start:>8.2f}{current:>10.4f}{ret:>+9.2f}%{n_trades:>8}{dd:>8.2f}%{wr_str:>8}{bh_str:>10}{alpha_str:>10}")
+            hold_str = "--" if hold_hrs != hold_hrs else f"{hold_hrs:.1f}h"
+            print(f"{name:<32}{start:>8.2f}{current:>10.4f}{ret:>+9.2f}%{n_trades:>8}{dd:>8.2f}%{wr_str:>8}{bh_str:>10}{alpha_str:>10}{hold_str:>10}")
 
     if rows:
         plt.axhline(y=rows[0][1], color="gray", linestyle="--", linewidth=0.8, label="starting capital")
