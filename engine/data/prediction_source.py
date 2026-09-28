@@ -69,6 +69,18 @@ def fetch_series(track_name: str, condition_id: str = None, history_len: int = 6
         raise RuntimeError(f"Market {condition_id} has no outcomePrices in API response")
     last_price = float(prices[0])
 
+    # the CLOB per-outcome token id, for order-book lookups (engine/data/orderbook_logger.py).
+    # Best-effort: absence shouldn't break price tracking, which is the critical path.
+    token_id = None
+    token_ids = market.get("clobTokenIds")
+    if isinstance(token_ids, str):
+        try:
+            token_ids = json.loads(token_ids)
+        except (json.JSONDecodeError, TypeError):
+            token_ids = None
+    if token_ids:
+        token_id = token_ids[0]
+
     path = _history_path(track_name)
     history = []
     if path.exists():
@@ -77,4 +89,4 @@ def fetch_series(track_name: str, condition_id: str = None, history_len: int = 6
     history = history[-history_len:]
     path.write_text(json.dumps(history))
 
-    return history, last_price, condition_id
+    return history, last_price, condition_id, token_id

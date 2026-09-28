@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from engine.data.orderbook_logger import log_order_book
 from engine.data.prediction_source import fetch_series
 from engine.runner import run_tick
 
@@ -23,8 +24,11 @@ def run(config: dict):
     condition_id = config.get("symbol") or _load_condition_id()
 
     def fetch():
-        series, last_price, resolved_id = fetch_series(TRACK_NAME, condition_id=condition_id)
+        series, last_price, resolved_id, token_id = fetch_series(TRACK_NAME, condition_id=condition_id)
         _save_condition_id(resolved_id)
+        # Best-effort real order-book logging for future cost-model validation
+        # (see engine/data/orderbook_logger.py) -- never affects the trading decision.
+        log_order_book(TRACK_NAME, token_id, last_price)
         return series, last_price
 
     run_tick(TRACK_NAME, config, fetch)
