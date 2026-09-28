@@ -24,21 +24,23 @@ def max_drawdown(equities: list) -> float:
     return worst * 100
 
 
-def win_rate(trades: list) -> float:
-    """Approximate: pairs consecutive BUY->SELL and checks if equity_after grew."""
-    sells = [t for t in trades if t[1] == "SELL" and t[3] > 0]
+def win_rate(trades: list, starting_capital: float) -> float:
+    """Net-of-cost win rate: was this whole round trip worth it compared to not
+    having traded at all -- equity right BEFORE the BUY vs equity right AFTER the
+    SELL. (An earlier version compared equity right AFTER the buy, which already
+    has that trade's own buy-side cost baked into the baseline -- double-counting
+    it as sunk before judging the trade, and overstating win rate as a result.)"""
+    sells = [t for t in trades if t[1] == "SELL"]
     if not sells:
         return float("nan")
     wins = 0
-    last_buy_equity = None
+    pre_trade_equity = starting_capital
     for t in trades:
-        side = t[1]
-        equity_after = t[6]
-        if side == "BUY":
-            last_buy_equity = equity_after
-        elif side == "SELL" and last_buy_equity is not None:
-            if equity_after > last_buy_equity:
+        side, equity_after = t[1], t[6]
+        if side == "SELL":
+            if equity_after > pre_trade_equity:
                 wins += 1
+            pre_trade_equity = equity_after  # baseline for the next round trip
     return 100 * wins / len(sells)
 
 
@@ -65,7 +67,7 @@ def main():
         current_equity = equities[-1]
         return_pct = 100 * (current_equity - starting_capital) / starting_capital
         dd = max_drawdown(equities)
-        wr = win_rate(trades)
+        wr = win_rate(trades, starting_capital)
 
         rows.append((track_name, starting_capital, current_equity, return_pct, len(trades), dd, wr))
 

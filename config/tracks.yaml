@@ -15,6 +15,12 @@ tracks:
     slippage_pct: 0.05
     poll_minutes: 15
     loss_cap_pct: 50      # flatten + stop if equity falls below this % of start
+    # Deliberately the same flat 50% across all four tracks, not tuned per-market --
+    # the point is to cap single-trade variance, not to optimize a number (2026-09-28
+    # external strategy audit consensus: all-in sizing turns every strategy error
+    # into a full account-level shock; a simple round fraction is the fix, not a
+    # risk-budget/volatility-target model this dataset is too small to calibrate).
+    position_size_pct: 50
 
   crypto_mean_reversion:
     domain: crypto
@@ -30,6 +36,7 @@ tracks:
     slippage_pct: 0.05
     poll_minutes: 15
     loss_cap_pct: 50
+    position_size_pct: 50
 
   stocks_momentum:
     domain: stocks
@@ -43,6 +50,7 @@ tracks:
     slippage_pct: 0.02
     poll_minutes: 15
     loss_cap_pct: 50
+    position_size_pct: 50
 
   prediction_markets_momentum:
     domain: prediction_markets
@@ -56,3 +64,4 @@ tracks:
     slippage_pct: 0.5
     poll_minutes: 15
     loss_cap_pct: 50
+    position_size_pct: 50

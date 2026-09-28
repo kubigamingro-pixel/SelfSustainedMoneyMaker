@@ -3,3 +3,4 @@
 # but that's implicit; this makes it explicit and permanent. `binary` is
 # git's built-in macro for -diff -merge -text.
 *.db binary
+*.docx binary
