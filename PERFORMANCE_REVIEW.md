@@ -270,10 +270,16 @@ is too small either way, per unanimous audit consensus.**
   experiment cannot distinguish "the strategy is bad" from "the market/regime was bad."
   Running momentum on 2+ assets (not just BTC) would decouple these. Not yet
   implemented.
-- **New, from the audit**: no buy-and-hold benchmark in the scoreboard. Momentum
-  strategies are supposed to underperform buy-and-hold in choppy markets — the fair
-  comparison for `crypto_momentum` isn't "did it make money" but "did it lose less than
-  holding BTC over the same window." Not yet implemented.
+- ~~No buy-and-hold benchmark~~ — **fixed 2026-09-28**: `scoreboard.py` now prints
+  `BuyHold%` (what simply holding the asset would have returned over the same window)
+  and `Alpha%` (strategy return minus buy-and-hold). Result so far: `crypto_momentum`
+  and `crypto_mean_reversion` both underperformed buy-and-hold (alpha -4.61% and
+  -2.21% respectively) — worse than "just didn't make money," they actively lost more
+  than doing nothing would have. `stocks_momentum` beat buy-and-hold (+0.78% alpha) on
+  its single trade, too little data to mean anything yet. Buy-and-hold is intentionally
+  not shown for `prediction_markets_momentum` — its tracked market auto-rotates to a
+  new question whenever the current one resolves, so "first price vs last price" would
+  compare two unrelated questions' probabilities, not one asset's return.
 
 ---
 
