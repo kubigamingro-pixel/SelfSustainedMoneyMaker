@@ -21,6 +21,35 @@ and stops the track if equity falls below 50% of starting capital) → run the
 strategy → simulate a fill (with fee + slippage) → log the trade and equity to a
 per-track SQLite ledger in `data_store/`.
 
+### Leveraged variants (added 2026-10-01)
+
+Same 4 strategies/markets above, also run leveraged: 2x and 10x, $50 starting
+capital each (8 more tracks, `engine/leveraged_runner.py` + `engine/leverage_risk.py`
+— a fully separate code path from the spot engine above, so none of this touches
+the proven spot-trading logic). Adds margin accounting, a funding cost (10%/year,
+a simple round assumption — real funding is periodic and can flip sign), and a new
+failure mode the spot tracks don't have: **per-position liquidation**, which can
+force-close a position and lose its margin well before the account-level loss cap
+would ever trigger on its own.
+
+**Worth knowing:** with the shared `position_size_pct: 50` and `loss_cap_pct: 50`
+config, a *single full liquidation* generally also trips the account-level loss
+cap in the same tick — margin committed (50% of capital) and the loss-cap floor
+(50% of capital) are the same number, so losing one full margin leaves the
+account right at its floor. In practice this means these leveraged tracks are
+fairly fragile: it doesn't take a sequence of bad trades to permanently end one,
+a single bad liquidation is usually enough. Verified directly (forced a 10%
+adverse move at 10x leverage in a test — the position liquidated and the account
+loss cap tripped in the same tick). This is a real property of the current
+config, not a bug — flagged here rather than silently changed, since whether to
+separate margin sizing from the loss-cap threshold is a design call worth making
+deliberately.
+
+**Honesty note:** `prediction_markets_momentum_2x`/`_10x` are a hypothetical
+comparison only — Polymarket does not actually offer margin/leveraged trading.
+This is "what if this strategy were leveraged," not a simulation of a real
+available product for that market.
+
 ## Running it
 
 **In production:** [.github/workflows/tick.yml](.github/workflows/tick.yml) runs `python scheduler.py --once`

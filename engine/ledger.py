@@ -15,6 +15,7 @@ class State:
     position_avg_price: float
     stopped: bool
     starting_capital: float
+    margin_committed: float = 0.0  # leveraged tracks only; always 0 for spot tracks
 
 
 class Ledger:
@@ -35,9 +36,16 @@ class Ledger:
                 position_qty REAL NOT NULL,
                 position_avg_price REAL NOT NULL,
                 stopped INTEGER NOT NULL,
-                starting_capital REAL NOT NULL DEFAULT 0
+                starting_capital REAL NOT NULL DEFAULT 0,
+                margin_committed REAL NOT NULL DEFAULT 0
             )"""
         )
+        # migrate ledgers created before margin_committed existed as a column (all
+        # spot tracks predate it) -- 0 is the correct value for every one of them,
+        # no heuristic needed, unlike the starting_capital migration below.
+        columns = [row[1] for row in self._conn.execute("PRAGMA table_info(state)").fetchall()]
+        if "margin_committed" not in columns:
+            self._conn.execute("ALTER TABLE state ADD COLUMN margin_committed REAL NOT NULL DEFAULT 0")
         # migrate ledgers created before starting_capital existed as a column.
         # Heuristic backfill (starting_capital = cash) is only correct for a track
         # that hadn't traded yet at migration time -- verified true for all 4 real
@@ -81,15 +89,15 @@ class Ledger:
 
     def get_state(self) -> State:
         row = self._conn.execute(
-            "SELECT cash, position_qty, position_avg_price, stopped, starting_capital FROM state WHERE id = 1"
+            "SELECT cash, position_qty, position_avg_price, stopped, starting_capital, margin_committed FROM state WHERE id = 1"
         ).fetchone()
-        return State(cash=row[0], position_qty=row[1], position_avg_price=row[2], stopped=bool(row[3]), starting_capital=row[4])
+        return State(cash=row[0], position_qty=row[1], position_avg_price=row[2], stopped=bool(row[3]), starting_capital=row[4], margin_committed=row[5])
 
     def set_state(self, state: State):
         # starting_capital is intentionally not updated here -- it's immutable after creation.
         self._conn.execute(
-            "UPDATE state SET cash = ?, position_qty = ?, position_avg_price = ?, stopped = ? WHERE id = 1",
-            (state.cash, state.position_qty, state.position_avg_price, int(state.stopped)),
+            "UPDATE state SET cash = ?, position_qty = ?, position_avg_price = ?, stopped = ?, margin_committed = ? WHERE id = 1",
+            (state.cash, state.position_qty, state.position_avg_price, int(state.stopped), state.margin_committed),
         )
         self._conn.commit()
 

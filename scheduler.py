@@ -16,7 +16,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from engine.config import load_tracks_config
-from tracks import crypto_mean_reversion, crypto_momentum, prediction_markets_momentum, stocks_momentum
+from tracks import (
+    crypto_mean_reversion,
+    crypto_mean_reversion_2x,
+    crypto_mean_reversion_10x,
+    crypto_momentum,
+    crypto_momentum_2x,
+    crypto_momentum_10x,
+    prediction_markets_momentum,
+    prediction_markets_momentum_2x,
+    prediction_markets_momentum_10x,
+    stocks_momentum,
+    stocks_momentum_2x,
+    stocks_momentum_10x,
+)
 
 LOG_DIR = Path(__file__).resolve().parent / "logs"
 
@@ -25,6 +38,14 @@ TRACK_MODULES = {
     "crypto_mean_reversion": crypto_mean_reversion,
     "stocks_momentum": stocks_momentum,
     "prediction_markets_momentum": prediction_markets_momentum,
+    "crypto_momentum_2x": crypto_momentum_2x,
+    "crypto_momentum_10x": crypto_momentum_10x,
+    "crypto_mean_reversion_2x": crypto_mean_reversion_2x,
+    "crypto_mean_reversion_10x": crypto_mean_reversion_10x,
+    "stocks_momentum_2x": stocks_momentum_2x,
+    "stocks_momentum_10x": stocks_momentum_10x,
+    "prediction_markets_momentum_2x": prediction_markets_momentum_2x,
+    "prediction_markets_momentum_10x": prediction_markets_momentum_10x,
 }
 
 

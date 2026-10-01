@@ -38,6 +38,14 @@ def _validate_track(name: str, cfg: dict):
     if not (0 < cfg["position_size_pct"] <= 100):
         raise ValueError(f"[{name}] position_size_pct must be in (0, 100], got {cfg['position_size_pct']}")
 
+    # leverage/funding_rate_annual_pct are optional: only leveraged tracks set them
+    # (spot tracks via engine/runner.py never read these keys at all). Validated
+    # only when present, rather than required universally.
+    if "leverage" in cfg and cfg["leverage"] < 1:
+        raise ValueError(f"[{name}] leverage must be >= 1, got {cfg['leverage']}")
+    if "funding_rate_annual_pct" in cfg and cfg["funding_rate_annual_pct"] < 0:
+        raise ValueError(f"[{name}] funding_rate_annual_pct must be >= 0, got {cfg['funding_rate_annual_pct']}")
+
 
 def load_tracks_config(path: Path = CONFIG_PATH) -> dict:
     data = yaml.safe_load(path.read_text())

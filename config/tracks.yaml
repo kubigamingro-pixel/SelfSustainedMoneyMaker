@@ -65,3 +65,155 @@ tracks:
     poll_minutes: 15
     loss_cap_pct: 50
     position_size_pct: 50
+
+  # --- Leveraged variants (added 2026-10-01) ---
+  # Same 4 strategies/markets above, same fee/slippage/position-sizing/loss-cap
+  # philosophy, but trading on margin: 2x and 10x leverage, $50 starting capital
+  # each (not $10, per explicit request). leverage and funding_rate_annual_pct
+  # are deliberately identical across all 8 of these -- not tuned per-track, same
+  # reasoning as position_size_pct above. funding_rate_annual_pct=10 is a simple,
+  # round, illustrative assumption (real perpetual-futures funding is periodic,
+  # variable, and can flip sign -- see engine/leverage_risk.py), not a fitted
+  # number. Liquidation (engine/leverage_risk.py) is a NEW failure mode these
+  # tracks have that the originals don't: an adverse move can force-close a
+  # position and lose its margin well before the account-level loss cap would
+  # ever trigger.
+  #
+  # Honesty note: prediction_markets_momentum_2x/10x are a hypothetical
+  # comparison only -- Polymarket does not actually offer margin/leveraged
+  # trading on its markets. This is "what if this strategy were leveraged",
+  # not a simulation of any real available product for that market.
+
+  crypto_momentum_2x:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  crypto_momentum_10x:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
+
+  crypto_mean_reversion_2x:
+    domain: crypto
+    symbol: ETH/USD
+    exchange: kraken
+    strategy: mean_reversion
+    strategy_params:
+      rsi_period: 14
+      oversold: 30
+      overbought: 70
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  crypto_mean_reversion_10x:
+    domain: crypto
+    symbol: ETH/USD
+    exchange: kraken
+    strategy: mean_reversion
+    strategy_params:
+      rsi_period: 14
+      oversold: 30
+      overbought: 70
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
+
+  stocks_momentum_2x:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.0
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  stocks_momentum_10x:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.0
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
+
+  prediction_markets_momentum_2x:
+    domain: prediction_markets
+    symbol: null
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 2.0
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  prediction_markets_momentum_10x:
+    domain: prediction_markets
+    symbol: null
+    strategy: momentum
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 2.0
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
