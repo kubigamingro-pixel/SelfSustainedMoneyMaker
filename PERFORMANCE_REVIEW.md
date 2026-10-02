@@ -321,3 +321,47 @@ is too small either way, per unanimous audit consensus.**
   strategy logic
 - `engine/risk.py` — the new cost-aware entry filter (`passes_cost_filter`)
 - `quant_strategy_audit.docx` — the full, unabridged five-model external audit
+
+---
+
+## 8. Incident: `prediction_markets_momentum` and both leveraged variants stopped
+### (2026-10-02)
+
+A Polymarket contract these three tracks were holding collapsed **-84.5%** in a
+single 15-minute tick (bought at 1.61¢, sold at 0.25¢ — consistent with the
+market resolving to a near-certain NO, not a thin-liquidity blip like the
+earlier incident in section 3). All three tracks' loss caps triggered and they
+are now **permanently stopped** (by design — this is what the loss cap is for).
+
+| Track | Starting capital | Final balance | Final return | How it ended |
+|---|---|---|---|---|
+| `prediction_markets_momentum` | $10.00 | $3.81 | **-61.93%** | Account loss cap (equity $3.82 < $5.00 floor) |
+| `prediction_markets_momentum_2x` | $50.00 | $24.02 | **-51.96%** | Liquidated (remaining margin -65.6%), then loss cap |
+| `prediction_markets_momentum_10x` | $50.00 | $20.10 | **-59.80%** | Liquidated (remaining margin -728.0%), then loss cap |
+
+Full trade history for all three (6, 2, and 2 trades respectively) is preserved
+permanently in git history and in each track's SQLite ledger even after reset —
+nothing here is being erased, only the live tracks are being given a fresh start.
+
+**What this confirms, concretely rather than theoretically:**
+1. The account-level loss cap and per-position liquidation behave exactly as
+   designed and documented in the README's leverage section — a single large
+   adverse move wipes the margin (which equals the loss-cap floor at this
+   `position_size_pct`/`loss_cap_pct` configuration) and ends the leveraged
+   tracks in the same event, not after a sequence of losses.
+2. `prediction_markets_momentum`'s structural fragility (flagged since section 3)
+   is not limited to thin-liquidity blips — a genuine large resolution move hit
+   just as hard, arguably harder, since the strategy had no way to anticipate a
+   probability collapsing toward 0 rather than reverting.
+3. 10x leverage amplified the same underlying move into a worse peak loss
+   (-728% of margin, i.e. the position lost more than 7x its own margin before
+   the liquidation engine could close it, since liquidation only acts at the
+   next tick's price check, not continuously) than 2x leverage did (-65.6% of
+   margin) — exactly the behavior leverage is supposed to produce, just on the
+   losing side this time.
+
+**Reset 2026-10-02:** all three tracks restarted at their original starting
+capital ($10 / $50 / $50), 0 trades, loss cap re-armed, under the unchanged
+current rules (no parameter was retuned in response to this -- one incident is
+not a basis for changing strategy parameters, same sample-size discipline as
+the rest of this document).
