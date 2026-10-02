@@ -270,3 +270,105 @@ tracks:
     poll_minutes: 15
     loss_cap_pct: 50
     position_size_pct: 50
+
+  # --- Leveraged regime-filtered variants (added 2026-10-02) ---
+  # Same 2x/10x/funding-rate pattern as the original leveraged tracks above,
+  # just on the regime-filtered strategy instead of plain momentum.
+
+  crypto_momentum_regime_2x:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  crypto_momentum_regime_10x:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
+
+  stocks_momentum_regime_2x:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.0
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  stocks_momentum_regime_10x:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 0.0
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
+
+  prediction_markets_momentum_regime_2x:
+    domain: prediction_markets
+    symbol: null
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 2.0
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 2
+    funding_rate_annual_pct: 10
+
+  prediction_markets_momentum_regime_10x:
+    domain: prediction_markets
+    symbol: null
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 50.0
+    fee_pct: 2.0
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+    leverage: 10
+    funding_rate_annual_pct: 10
