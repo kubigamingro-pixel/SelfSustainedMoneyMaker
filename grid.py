@@ -11,6 +11,13 @@ ROWS = [
     ("crypto_mean_reversion", "ETH mean-rev"),
     ("stocks_momentum", "SPY momentum"),
     ("prediction_markets_momentum", "Polymarket momentum"),
+    # Regime-filtered variants (added 2026-10-02): same markets, same cost/sizing,
+    # but the entry is gated on the slow SMA also rising -- see
+    # engine/strategies/momentum_regime_filtered.py. 1x only for now, so these
+    # rows show "n/a" in the 2x/10x columns -- that's expected, not a bug.
+    ("crypto_momentum_regime", "BTC momentum+regime"),
+    ("stocks_momentum_regime", "SPY momentum+regime"),
+    ("prediction_markets_momentum_regime", "Polymarket momentum+regime"),
 ]
 COLUMNS = [("", "1x"), ("_2x", "2x"), ("_10x", "10x")]
 

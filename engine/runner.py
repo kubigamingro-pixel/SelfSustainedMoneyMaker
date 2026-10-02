@@ -8,10 +8,12 @@ from engine.risk import check_loss_cap, equity_of, passes_cost_filter
 from engine.strategies.base import Action
 from engine.strategies.mean_reversion import MeanReversionStrategy
 from engine.strategies.momentum import MomentumStrategy
+from engine.strategies.momentum_regime_filtered import MomentumRegimeFilteredStrategy
 
 STRATEGIES = {
     "momentum": MomentumStrategy,
     "mean_reversion": MeanReversionStrategy,
+    "momentum_regime": MomentumRegimeFilteredStrategy,
 }
 
 logger = logging.getLogger(__name__)

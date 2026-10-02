@@ -217,3 +217,56 @@ tracks:
     position_size_pct: 50
     leverage: 10
     funding_rate_annual_pct: 10
+
+  # --- Regime-filtered momentum variants (added 2026-10-02) ---
+  # Same 3 momentum markets above (not crypto_mean_reversion -- that's a
+  # different base strategy), same cost/sizing assumptions, but the entry
+  # signal is additionally gated: only buy a crossover if the slow SMA itself
+  # is rising (engine/strategies/momentum_regime_filtered.py), a pattern
+  # adapted from freqtrade's "guard condition" approach. 1x only for now --
+  # stacking leverage with an untested filter would muddy whether any result
+  # is from the filter or the leverage. $10 starting capital, matching the
+  # original 1x tracks (not the leveraged $50 ones).
+
+  crypto_momentum_regime:
+    domain: crypto
+    symbol: BTC/USD
+    exchange: kraken
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 0.26
+    slippage_pct: 0.05
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+
+  stocks_momentum_regime:
+    domain: stocks
+    symbol: SPY
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 0.0
+    slippage_pct: 0.02
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50
+
+  prediction_markets_momentum_regime:
+    domain: prediction_markets
+    symbol: null
+    strategy: momentum_regime
+    strategy_params:
+      fast_window: 5
+      slow_window: 20
+    starting_capital: 10.0
+    fee_pct: 2.0
+    slippage_pct: 0.5
+    poll_minutes: 15
+    loss_cap_pct: 50
+    position_size_pct: 50

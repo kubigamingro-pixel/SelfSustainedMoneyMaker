@@ -23,12 +23,15 @@ from tracks import (
     crypto_momentum,
     crypto_momentum_2x,
     crypto_momentum_10x,
+    crypto_momentum_regime,
     prediction_markets_momentum,
     prediction_markets_momentum_2x,
     prediction_markets_momentum_10x,
+    prediction_markets_momentum_regime,
     stocks_momentum,
     stocks_momentum_2x,
     stocks_momentum_10x,
+    stocks_momentum_regime,
 )
 
 LOG_DIR = Path(__file__).resolve().parent / "logs"
@@ -46,6 +49,9 @@ TRACK_MODULES = {
     "stocks_momentum_10x": stocks_momentum_10x,
     "prediction_markets_momentum_2x": prediction_markets_momentum_2x,
     "prediction_markets_momentum_10x": prediction_markets_momentum_10x,
+    "crypto_momentum_regime": crypto_momentum_regime,
+    "stocks_momentum_regime": stocks_momentum_regime,
+    "prediction_markets_momentum_regime": prediction_markets_momentum_regime,
 }
 
 
