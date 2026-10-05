@@ -365,3 +365,34 @@ capital ($10 / $50 / $50), 0 trades, loss cap re-armed, under the unchanged
 current rules (no parameter was retuned in response to this -- one incident is
 not a basis for changing strategy parameters, same sample-size discipline as
 the rest of this document).
+
+---
+
+## 9. Incident: all six Polymarket momentum tracks stopped (2026-10-03 to 2026-10-04)
+
+All six Polymarket momentum tracks — the base strategy and the regime-filtered
+variant, each at 1x, 2x and 10x — reached their loss caps within about 36 hours.
+The tracked contract's implied probability swung sharply (roughly 0.06 to 0.10
+and back, with moves of 20-45% within single ticks), and momentum entries
+bought into moves that reversed within hours. Leverage made the outcome
+proportionally worse, and liquidation took the 2x and 10x leveraged tracks out
+before the loss cap fired on a few of them.
+
+| Track | Start | Final balance | Return | How it ended |
+|---|---|---|---|---|
+| `prediction_markets_momentum` | $10 | $4.93 | -50.68% | Loss cap (4 trades) |
+| `prediction_markets_momentum_2x` | $50 | $24.64 | -50.72% | Liquidated, then loss cap (2 trades) |
+| `prediction_markets_momentum_10x` | $50 | $20.09 | -59.82% | Liquidated, then loss cap (2 trades) |
+| `prediction_markets_momentum_regime` | $10 | $4.75 | -52.50% | Loss cap (10 trades) |
+| `prediction_markets_momentum_regime_2x` | $50 | $22.16 | -55.68% | Loss cap (6 trades) |
+| `prediction_markets_momentum_regime_10x` | $50 | $20.10 | -59.81% | Liquidated, then loss cap (2 trades) |
+
+What this shows: the regime guard did not protect these tracks. The regime
+variant placed 10 trades on the base 1x track, and every regime variant still
+hit the loss cap. The problem is the market's price behaviour (thin,
+jump-prone, bounded near 0-1), which a trend guard on SMAs does not address.
+One six-track incident is not grounds to retune parameters; it is grounds to
+keep Polymarket momentum out of any conclusion about the strategy.
+
+Reset 2026-10-05: all six restarted at their original capital, 0 trades,
+loss cap re-armed, rules unchanged. Full trade history is preserved in git.
