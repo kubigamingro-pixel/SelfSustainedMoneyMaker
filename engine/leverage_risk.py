@@ -34,7 +34,7 @@ def leveraged_equity_of(state: State, last_price: float) -> float:
     return state.cash + state.margin_committed + unrealized_pnl(state, last_price)
 
 
-def _force_close(ledger: Ledger, state: State, last_price: float, fee_pct: float, slippage_pct: float, reason: str) -> State:
+def _force_close(ledger: Ledger, state: State, last_price: float, fee_pct: float, slippage_pct: float, reason: str, ts=None) -> State:
     qty = state.position_qty
     fill = simulate_fill("SELL", last_price, qty, fee_pct, slippage_pct)
     pnl = (fill.price - state.position_avg_price) * qty
@@ -49,7 +49,7 @@ def _force_close(ledger: Ledger, state: State, last_price: float, fee_pct: float
     state.position_entry_period_low = None
     ledger.record_trade(
         side="SELL", price=fill.price, qty=qty, fee=fill.fee,
-        cash_after=state.cash, equity_after=state.cash, reason=reason,
+        cash_after=state.cash, equity_after=state.cash, reason=reason, ts=ts,
     )
     return state
 
@@ -66,7 +66,7 @@ def liquidation_price(state: State) -> float:
 
 
 def check_liquidation(
-    ledger: Ledger, state: State, last_price: float, fee_pct: float, slippage_pct: float, period_low: float = None,
+    ledger: Ledger, state: State, last_price: float, fee_pct: float, slippage_pct: float, period_low: float = None, ts=None,
 ) -> State:
     """Force-closes the position once losses consume MAINTENANCE_MARGIN_PCT of the
     committed margin. Unlike check_account_loss_cap, this is per-position: the track
@@ -101,6 +101,7 @@ def check_liquidation(
         return _force_close(
             ledger, state, last_price, fee_pct, slippage_pct,
             reason=f"LIQUIDATED remaining_margin_pct={remaining_margin_pct:.1f}%",
+            ts=ts,
         )
 
     same_period_as_entry = (
@@ -113,6 +114,7 @@ def check_liquidation(
             return _force_close(
                 ledger, state, liq_price, fee_pct, slippage_pct,
                 reason=f"LIQUIDATED intrabar low={period_low:.6f} <= liq_price={liq_price:.6f}",
+                ts=ts,
             )
     return state
 
@@ -156,7 +158,7 @@ def check_account_loss_cap(
     if equity < floor:
         reason = f"LOSS_CAP_BREACHED equity={equity:.4f} floor={floor:.4f}"
         if state.position_qty > 0:
-            state = _force_close(ledger, state, last_price, fee_pct, slippage_pct, reason=reason)
+            state = _force_close(ledger, state, last_price, fee_pct, slippage_pct, reason=reason, ts=ts)
         final_equity = leveraged_equity_of(state, last_price)  # == state.cash now (position is closed)
         # 2026-10-12 fix-check (second review): reset_epoch() reads state fresh
         # from the database itself (ledger.get_state()), so without this write

@@ -94,7 +94,7 @@ def run_tick(track_name: str, config: dict, fetch_series_fn, ledger: Ledger = No
             ledger.close()
         return
 
-    state = check_loss_cap(ledger, state, last_price, starting_capital, loss_cap_pct, fee_pct, slippage_pct)
+    state = check_loss_cap(ledger, state, last_price, starting_capital, loss_cap_pct, fee_pct, slippage_pct, ts=ts)
     ledger.set_state(state)
     if state.stopped:
         logger.warning("[%s] LOSS CAP TRIGGERED at price %.6f", track_name, last_price)

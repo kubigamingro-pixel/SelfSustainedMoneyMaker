@@ -97,13 +97,20 @@ def check_loss_cap(
     loss_cap_pct: float,
     fee_pct: float = 0.0,
     slippage_pct: float = 0.0,
+    ts=None,
 ) -> State:
     """If equity has fallen below loss_cap_pct of starting capital, flatten the position
     and mark the track stopped. A stopped track takes no further action until reset.
 
     The flatten goes through the same simulate_fill path as a normal exit -- a forced
     stop-loss should not be modeled as *more* favorable (zero fee, zero slippage) than
-    a planned exit; if anything a panic exit fares worse in reality."""
+    a planned exit; if anything a panic exit fares worse in reality.
+
+    ts (2026-10-12 simulation-review finding #2): omitted for live use (defaults
+    to wall-clock, unchanged). A historical replay must pass its own simulated
+    tick time here -- without it, a forced flatten during a replay gets stamped
+    with whatever real time the script happened to run, not the historical
+    moment it actually occurred, corrupting hold-duration stats."""
     if state.stopped:
         return state
 
@@ -125,6 +132,7 @@ def check_loss_cap(
                 cash_after=state.cash,
                 equity_after=state.cash,
                 reason=f"LOSS_CAP_TRIGGERED equity={equity:.4f} floor={floor:.4f}",
+                ts=ts,
             )
         state.stopped = True
     return state
