@@ -9,3 +9,8 @@ venv/
 # per-machine Claude Code settings -- was untracked but NOT ignored (2026-10-12
 # audit finding #18), one `git add -A` away from being published to this public repo.
 .claude/settings.local.json
+# local-machine-only workaround for a DNS resolver issue reading Polymarket's
+# public API from this PC (see audits/2026-10-12-prediction-markets-final-report.md);
+# not part of the live system (which runs via GitHub Actions, unaffected), and
+# not meant to be published to the public repo.
+_local_dns_workaround.py
