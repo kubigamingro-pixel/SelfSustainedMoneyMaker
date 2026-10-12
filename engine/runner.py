@@ -152,7 +152,16 @@ def run_tick(track_name: str, config: dict, fetch_series_fn, ledger: Ledger = No
             fill = simulate_fill("BUY", last_price, qty, fee_pct, slippage_pct)
             cost = fill.price * fill.qty + fill.fee
 
-        if cost <= budget and fill.qty > 0:
+        # 2026-10-12 simulation-v3 review: the rescale above can still leave cost
+        # a single floating-point rounding step above budget (re-running
+        # simulate_fill after rescaling isn't guaranteed to round the same way
+        # twice), which failed `cost <= budget` by a sub-cent margin and dropped
+        # an otherwise-affordable BUY as "unaffordable". Never observed live or
+        # in any saved replay (0 occurrences across everything checked), but hit
+        # 10/184 times in an unfiltered-cost-filter experiment -- a tiny relative
+        # tolerance absorbs the rounding without meaningfully loosening the
+        # actual affordability check.
+        if cost <= budget * (1 + 1e-9) and fill.qty > 0:
             state.cash -= cost
             state.position_qty = fill.qty
             state.position_avg_price = fill.price
