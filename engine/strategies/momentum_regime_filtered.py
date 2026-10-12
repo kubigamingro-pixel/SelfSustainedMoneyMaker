@@ -48,7 +48,6 @@ class MomentumRegimeFilteredStrategy(Strategy):
         slow_prev = _sma(series[:-1], slow_window)
 
         crossed_up = fast_prev <= slow_prev and fast_now > slow_now
-        crossed_down = fast_prev >= slow_prev and fast_now < slow_now
         slow_rising = slow_now > slow_prev  # regime guard: broader trend actually rising
 
         if crossed_up and not holding_position and slow_rising:
@@ -62,7 +61,10 @@ class MomentumRegimeFilteredStrategy(Strategy):
                 Action.HOLD,
                 f"crossover fired but regime guard failed: slow SMA not rising ({slow_prev:.6f} -> {slow_now:.6f})",
             )
-        if crossed_down and holding_position:
-            # exit stays unconditional, same as the plain momentum strategy
-            return Signal(Action.SELL, f"fast SMA({fast_window})={fast_now:.6f} crossed below slow SMA({slow_window})={slow_now:.6f}")
+        # 2026-10-12 audit finding #13 (same fix as engine/strategies/momentum.py):
+        # exit on state (fast below slow), not only on the exact crossover bar --
+        # unconditional either way, consistent with the plain momentum strategy.
+        # The regime guard applies to entries only.
+        if holding_position and fast_now < slow_now:
+            return Signal(Action.SELL, f"fast SMA({fast_window})={fast_now:.6f} below slow SMA({slow_window})={slow_now:.6f}")
         return Signal(Action.HOLD, "no crossover")

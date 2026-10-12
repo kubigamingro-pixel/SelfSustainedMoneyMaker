@@ -13,6 +13,6 @@ def run(config: dict):
         return
 
     def fetch():
-        return fetch_series(config["symbol"])
+        return fetch_series(config["symbol"], include_low=True)
 
     run_tick(TRACK_NAME, config, fetch)

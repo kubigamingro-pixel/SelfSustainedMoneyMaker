@@ -396,3 +396,40 @@ keep Polymarket momentum out of any conclusion about the strategy.
 
 Reset 2026-10-05: all six restarted at their original capital, 0 trades,
 loss cap re-armed, rules unchanged. Full trade history is preserved in git.
+
+---
+
+## 10. Correction (2026-10-12): sections 8 and 9 include an accounting bug, not just market behavior
+
+A 2026-10-12 audit (`audits/2026-10-12-improvement-security-trading-engine.md`,
+finding #1) found that `engine/data/prediction_source.py` rotated to a newly
+picked market whenever the currently tracked one closed, **even while a
+position was still open on the old one** — and the caller had no way to know a
+swap had happened, so the open position kept being valued, liquidated, or sold
+at the *new, unrelated* market's price.
+
+Traced directly against the 2026-10-03/04 incident's ledger (section 8's events,
+commit `7e484bbf`, just before the 10-05 reset): `prediction_markets_momentum`
+bought at 0.9698 on a market that then held near 0.9995 for two hours — a
+near-certain winner — then rotated twice, marking the position down to 0.725
+and then 0.10 on two different markets, before selling at 0.0697 and hitting
+the loss cap. `_2x` and `_10x` were "liquidated" at the exact tick the first
+rotation happened. **All three positions were winning on the market they were
+actually bought on.**
+
+This means: section 8's framing ("a Polymarket contract collapsed -84.5% in a
+single tick") describes a real, separate incident and is not affected. Section
+9's framing ("the regime guard did not protect these tracks... the market's
+price behaviour... a trend guard does not address") is **partly wrong** — at
+least some of that -50 to -60% was this rollover bug mismarking winning
+positions as losing ones, not the strategies or the regime guard failing on
+genuinely adverse price action. The six-track incident in section 9 should not
+be read as settled evidence about regime-guard effectiveness on Polymarket.
+
+Fixed the same day (`engine/data/prediction_source.py`: a market is never
+abandoned while a position is open on it; see the module's `fetch_series`
+docstring) and not retroactively applied to the historical ledgers described
+above — those numbers stand as a record of what happened, now correctly
+attributed to the bug rather than to the strategy. No further reset was needed
+for this correction; the 2026-10-05 reset already put all six tracks at their
+starting capital with the fix now in place going forward.

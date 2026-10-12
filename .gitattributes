@@ -1,6 +1,30 @@
+# 2026-10-12 fix-check review (finding N2): this machine's core.autocrlf=true
+# meant source files committed from here could end up CRLF in the repo, so
+# editing them back to LF (every editor/tool here writes LF) turned ordinary
+# diffs into whole-file rewrites (observed: 2,729/2,028 changed lines vs
+# 881/180 real ones). Forcing LF here makes line endings for text source
+# files consistent regardless of any contributor's autocrlf setting, on any
+# OS. Applied with `git add --renormalize .` after adding this.
+* text=auto eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.lock text eol=lf
+
 # SQLite ledgers must never go through text/line-ending conversion -- that
 # would corrupt them. Git's heuristic already detects them as binary today,
 # but that's implicit; this makes it explicit and permanent. `binary` is
 # git's built-in macro for -diff -merge -text.
+#
+# These two lines must stay LAST: gitattributes resolves conflicting rules by
+# last-match-wins per attribute, and the `*` rule above also matches .db/.docx
+# files -- a second fix-check review caught that with the binary rules listed
+# first (the original order), the later `* text=auto eol=lf` line silently
+# re-enabled text conversion on them, which would corrupt a SQLite ledger the
+# next time autocrlf touched it. Harmless so far only because nothing has
+# actually re-saved a .db file through git's filters since; moved here so the
+# protection is real, not incidental.
 *.db binary
 *.docx binary

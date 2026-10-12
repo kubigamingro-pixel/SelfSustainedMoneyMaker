@@ -2,19 +2,23 @@
 
 **Status: validation phase.** This is a paper-trading (simulated money) comparison
 engine. No exchange or broker accounts, no API keys, no real capital involved yet.
-The goal is to run four strategies in parallel against live public market data and
-see which one actually holds up before ever risking the real $10.
+The goal is to run strategies in parallel against live public market data and
+see which one actually holds up before ever risking real money.
 
 ## What it does
 
-Four tracks, each starting from a simulated $10, all sharing one engine:
+21 tracks total: 4 base strategy/market combinations, each run at 1x ($10
+starting capital), 2x and 10x leverage ($50 starting capital), plus 3 of those
+4 also run with a regime-filter guard on top (also 1x/2x/10x) -- see
+`grid.py` for the full 7x3 comparison. All share one engine:
 
-| Track | Domain | Data source (free, no key) | Strategy |
+| Track family | Domain | Data source (free, no key) | Strategy |
 |---|---|---|---|
 | `crypto_momentum` | Crypto (BTC/USD, Kraken) | `ccxt` public OHLCV | SMA crossover trend-following |
 | `crypto_mean_reversion` | Crypto (ETH/USD, Kraken) | `ccxt` public OHLCV | RSI(14) oversold/overbought |
 | `stocks_momentum` | Stocks (SPY) | `yfinance` | SMA crossover trend-following |
 | `prediction_markets_momentum` | Prediction markets | Polymarket Gamma API | SMA crossover on implied probability |
+| `*_regime` (crypto/stocks/prediction markets momentum only) | same as above | same as above | SMA crossover, entry also gated on the slow SMA rising (`engine/strategies/momentum_regime_filtered.py`) |
 
 Every tick: fetch the latest price series → check the per-track loss cap (flattens
 and stops the track if equity falls below 50% of starting capital) → run the
@@ -33,17 +37,22 @@ force-close a position and lose its margin well before the account-level loss ca
 would ever trigger on its own.
 
 **Worth knowing:** with the shared `position_size_pct: 50` and `loss_cap_pct: 50`
-config, a *single full liquidation* generally also trips the account-level loss
-cap in the same tick — margin committed (50% of capital) and the loss-cap floor
-(50% of capital) are the same number, so losing one full margin leaves the
-account right at its floor. In practice this means these leveraged tracks are
-fairly fragile: it doesn't take a sequence of bad trades to permanently end one,
-a single bad liquidation is usually enough. Verified directly (forced a 10%
-adverse move at 10x leverage in a test — the position liquidated and the account
-loss cap tripped in the same tick). This is a real property of the current
-config, not a bug — flagged here rather than silently changed, since whether to
-separate margin sizing from the loss-cap threshold is a design call worth making
-deliberately.
+config, a *single full liquidation* generally also breaches the account-level
+loss cap in the same tick — margin committed (50% of capital) and the loss-cap
+floor (50% of capital) are the same number, so losing one full margin leaves
+the account right at its floor. Verified directly (forced a 10% adverse move
+at 10x leverage in a test). This is a real property of the current config, not
+a bug.
+
+As of 2026-10-12, the account-level loss cap for **leveraged tracks only** is
+non-terminal ("research mode"): it force-closes the open position (same as a
+liquidation) and records a `LOSS_CAP_BREACHED` event, but the track keeps
+trading afterward with whatever cash remains — see `engine/leverage_risk.py`.
+It used to permanently stop the track, which meant a single bad gap ended that
+track's entire sample; this change followed from a 2026-10-12 audit (see
+`audits/`) after it had already forced two manual resets. 1x spot tracks are
+unaffected and still stop permanently on breach (`engine/risk.py`). `grid.py`
+shows breach counts (`[N breaches]`) where this has fired instead of `[STOPPED]`.
 
 **Honesty note:** `prediction_markets_momentum_2x`/`_10x` are a hypothetical
 comparison only — Polymarket does not actually offer margin/leveraged trading.
@@ -53,24 +62,21 @@ available product for that market.
 ## Running it
 
 **In production:** [.github/workflows/tick.yml](.github/workflows/tick.yml) runs `python scheduler.py --once`
-on a schedule (every 15 min) via GitHub Actions, then commits the updated
-SQLite ledgers back to this repo. This is deliberate: it needs no machine of
-ours to stay on, and public-repo Actions minutes are free. Trigger a tick
-manually with `gh workflow run tick.yml` or from the Actions tab.
-
-**Known issue:** GitHub's `schedule` cron trigger has been unreliable about
-firing on its own after this workflow's creation (confirmed via
-`actions/runs?event=schedule` repeatedly returning 0, even hours in). Manual
-`gh workflow run tick.yml` always works fine — it's specifically the
-automatic cron firing that's been flaky. If ticks look sparse, check whether
-the schedule has started firing yet before assuming something's broken in the code.
+via GitHub Actions, then commits the updated SQLite ledgers back to this repo.
+The workflow only listens for `workflow_dispatch` (no `schedule:` trigger) —
+an external cron-job.org job calls the GitHub REST API every 15 minutes to
+fire it. This is deliberate, not a placeholder: GitHub's own `schedule`
+trigger was confirmed unreliable (went hours with zero self-fired runs, then
+only intermittent afterward), so cron-job.org replaced it entirely rather
+than running alongside it. Trigger a tick manually with `gh workflow run
+tick.yml` or from the Actions tab — both work the same as the cron-job.org path.
 
 **Locally** (for development/testing, not how it runs in production):
 
 ```bash
 pip install -r requirements.txt
 
-python scheduler.py --once   # one tick of all four tracks
+python scheduler.py --once   # one tick of all 21 tracks
 python scheduler.py --loop   # or run continuously, sleeping between ticks
 ```
 
@@ -81,13 +87,13 @@ python scoreboard.py
 ```
 
 Prints a comparison table (return %, max drawdown, trade count, win rate) and
-writes `logs/equity_curve.png` with all four equity curves overlaid.
+writes `logs/equity_curve.png` with all tracks' equity curves overlaid.
 
 ```bash
 python trade_log.py
 ```
 
-Prints every trade ever made, across all four tracks, in chronological order,
+Prints every trade ever made, across all tracks, in chronological order,
 with the strategy's reasoning for each one (e.g. `RSI(14)=28.4 < oversold
 threshold 30`). This is permanent history -- pulled from the same SQLite
 ledgers that get committed to the repo every tick, not from ephemeral logs.
@@ -96,9 +102,38 @@ ledgers that get committed to the repo every tick, not from ephemeral logs.
 python grid.py
 ```
 
-Compact 4x3 view: the 4 strategies/markets (rows) x leverage level (1x/2x/10x,
-columns) -- the fastest way to compare how leverage affects the exact same
-signal side by side.
+Compact 7x3 view: the 7 strategy/market rows (4 base + 3 regime-filtered) x
+leverage level (1x/2x/10x, columns) -- the fastest way to compare how leverage
+and the regime filter each affect the exact same signal side by side.
+
+```bash
+python backtest.py --source crypto --symbols BTC/USD,ETH/USD --strategy momentum \
+    --fee-pct 0.26 --slippage-pct 0.05 --days 180 --oos-days 30
+```
+
+Offline backtest harness (added 2026-10-12, see `audits/`): replays a strategy
+over historical closed candles through the exact same `engine.runner.run_tick`
+the live spot tracks use (so backtest and live share one code path), against
+an in-memory ledger that never touches `data_store/`. Reports net-of-cost
+return, win rate, max drawdown, buy-and-hold alpha, an in-sample/out-of-sample
+split, and a bootstrap confidence interval. Spot engine only (crypto/stocks,
+no leverage, no Polymarket) -- see the file's own docstring for data-source
+history limits (Kraken's public OHLC endpoint caps out around 720 candles) and
+other caveats. Run `python backtest.py --help` for all options.
+
+```bash
+python reset_track.py crypto_momentum --reason "manual review reset"
+python reset_track.py --all --reason "fresh start for the whole comparison"
+```
+
+Resets a track to start a new epoch (added 2026-10-12, see `audits/`) without
+losing its history: the closed epoch's summary is archived into the ledger's
+own `epochs` table and every prior trade/decision/equity row stays queryable
+by its original epoch number (`Ledger.trades(epoch=0)`, etc.) -- a reset no
+longer means "only git history remembers this happened." `grid.py` shows
+`[epoch N]` once a track is past its first epoch. Replaces the old pattern of
+hand-editing a track's ledger state directly. Run `python reset_track.py --help`
+for the open-position caveat (you must supply `--final-equity` yourself).
 
 ## Config
 

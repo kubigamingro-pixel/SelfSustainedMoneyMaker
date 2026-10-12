@@ -12,13 +12,14 @@ from datetime import datetime, timezone
 
 from engine.ledger import Ledger
 from engine.leverage_risk import (
+    _force_close,
     apply_funding_cost,
     check_account_loss_cap,
     check_liquidation,
     leveraged_equity_of,
 )
 from engine.paper_broker import simulate_fill
-from engine.risk import passes_cost_filter
+from engine.risk import passes_cost_filter, passes_price_band, validate_price
 from engine.strategies.base import Action
 from engine.strategies.mean_reversion import MeanReversionStrategy
 from engine.strategies.momentum import MomentumStrategy
@@ -33,8 +34,27 @@ STRATEGIES = {
 logger = logging.getLogger(__name__)
 
 
+def settle_position(ledger: Ledger, last_price: float, reason: str, fee_pct: float, slippage_pct: float):
+    """Margin-aware equivalent of engine.runner.settle_position -- see its
+    docstring (2026-10-12 fix-check review, finding #1 follow-up). Reuses
+    engine.leverage_risk._force_close, the same mechanics a liquidation or
+    loss-cap breach already uses, so a Polymarket market resolving while a
+    leveraged position is open returns margin + pnl the same way those do."""
+    state = ledger.get_state()
+    if state.position_qty <= 0:
+        return state
+    state = _force_close(ledger, state, last_price, fee_pct, slippage_pct, reason=reason)
+    ledger.set_state(state)
+    ledger.record_equity(last_price, leveraged_equity_of(state, last_price))
+    ledger.commit()
+    return state
+
+
 def run_tick(track_name: str, config: dict, fetch_series_fn):
-    """fetch_series_fn() -> (series: list[float], last_price: float).
+    """fetch_series_fn() -> (series: list[float], last_price: float, period_low: float).
+    period_low is the latest closed candle's low (or just last_price where the
+    data source has no real OHLC, e.g. Polymarket) -- used for intrabar
+    liquidation (engine/leverage_risk.py, finding #12).
     Isolated per track: exceptions are caught by the caller (scheduler)."""
 
     fee_pct = config["fee_pct"]
@@ -43,6 +63,7 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
     position_size_pct = config["position_size_pct"]
     leverage = config["leverage"]
     funding_rate_annual_pct = config["funding_rate_annual_pct"]
+    price_band = config.get("price_band")
 
     ledger = Ledger(track_name, config["starting_capital"])
     state = ledger.get_state()
@@ -53,7 +74,14 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
         ledger.close()
         return
 
-    series, last_price = fetch_series_fn()
+    series, last_price, period_low = fetch_series_fn()
+
+    if not validate_price(last_price):
+        logger.warning("[%s] tick skipped: invalid last_price %r", track_name, last_price)
+        ledger.record_decision(last_price if isinstance(last_price, (int, float)) else None, "SKIP", "invalid last_price")
+        ledger.commit()
+        ledger.close()
+        return
 
     if state.position_qty > 0:
         curve = ledger.equity_curve()
@@ -64,12 +92,18 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
             hours_elapsed = 0.0
         state = apply_funding_cost(state, last_price, hours_elapsed, funding_rate_annual_pct)
 
-    state = check_liquidation(ledger, state, last_price, fee_pct, slippage_pct)
-    state = check_account_loss_cap(ledger, state, last_price, starting_capital, loss_cap_pct, fee_pct, slippage_pct)
+    state = check_liquidation(ledger, state, last_price, fee_pct, slippage_pct, period_low)
+    state = check_account_loss_cap(ledger, state, last_price, starting_capital, loss_cap_pct, fee_pct, slippage_pct, ts=None)
     ledger.set_state(state)
     if state.stopped:
-        logger.warning("[%s] LOSS CAP TRIGGERED at price %.6f", track_name, last_price)
+        # Reserved for a future genuine permanent-stop path -- check_account_loss_cap
+        # no longer sets this itself (2026-10-12 audit finding #6: a research harness
+        # measuring edge shouldn't end a track's whole sample on its first gapped
+        # liquidation; see LOSS_CAP_BREACHED in engine/leverage_risk.py instead).
+        logger.warning("[%s] track stopped at price %.6f", track_name, last_price)
         ledger.record_equity(last_price, leveraged_equity_of(state, last_price))
+        ledger.record_decision(last_price, "STOP", "track stopped")
+        ledger.commit()
         ledger.close()
         return
 
@@ -80,9 +114,17 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
 
     if signal.action == Action.BUY and not holding_position and last_price <= 0:
         logger.warning("[%s] BUY signal ignored: non-positive last_price %.6f", track_name, last_price)
+        ledger.record_decision(last_price, "HOLD", "BUY ignored: non-positive price")
+
+    elif signal.action == Action.BUY and not holding_position and not passes_price_band(last_price, price_band):
+        # 2026-10-12 fix-check review (findings #2/#3) -- see engine/runner.py's
+        # matching comment.
+        logger.info("[%s] BUY signal filtered: price %.6f outside price_band %s", track_name, last_price, price_band)
+        ledger.record_decision(last_price, "HOLD", f"BUY filtered by price_band {price_band}")
 
     elif signal.action == Action.BUY and not holding_position and not passes_cost_filter(series, fee_pct, slippage_pct):
         logger.info("[%s] BUY signal filtered: expected move too small vs round-trip cost (%s)", track_name, signal.reason)
+        ledger.record_decision(last_price, "HOLD", f"BUY filtered by cost filter: {signal.reason}", cost_filter_pass=False)
 
     elif signal.action == Action.BUY and not holding_position:
         # margin_budget is the trader's own capital at risk (position_size_pct of
@@ -105,14 +147,20 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
             state.margin_committed = margin_budget
             state.position_qty = fill.qty
             state.position_avg_price = fill.price
+            # 2026-10-12 fix-check review, finding #12 edge case: remember which
+            # period's low was already "live" at entry, so check_liquidation can
+            # skip it if a later tick lands in that same still-open period.
+            state.position_entry_period_low = period_low
             equity = leveraged_equity_of(state, last_price)
             ledger.record_trade("BUY", fill.price, fill.qty, fee_paid, state.cash, equity, signal.reason)
+            ledger.record_decision(last_price, "BUY", signal.reason, cost_filter_pass=True)
             logger.info(
                 "[%s] BUY %.6f @ %.6f (%gx, margin %.4f, fee %.6f) -> equity %.4f",
                 track_name, fill.qty, fill.price, leverage, margin_budget, fee_paid, equity,
             )
         else:
             logger.warning("[%s] BUY signal fired but order could not be sized affordably", track_name)
+            ledger.record_decision(last_price, "HOLD", "BUY signal fired but unaffordable", cost_filter_pass=True)
 
     elif signal.action == Action.SELL and holding_position:
         qty = state.position_qty
@@ -123,19 +171,24 @@ def run_tick(track_name: str, config: dict, fetch_series_fn):
         state.position_qty = 0
         state.position_avg_price = 0
         state.margin_committed = 0
+        state.position_entry_period_low = None
         equity = state.cash
         ledger.record_trade("SELL", fill.price, qty, fill.fee, state.cash, equity, signal.reason)
+        ledger.record_decision(last_price, "SELL", signal.reason)
         logger.info("[%s] SELL %.6f @ %.6f (fee %.6f) -> equity %.4f", track_name, qty, fill.price, fill.fee, equity)
 
     elif signal.action == Action.HOLD:
         logger.info("[%s] HOLD @ %.6f (%s)", track_name, last_price, signal.reason)
+        ledger.record_decision(last_price, "HOLD", signal.reason)
 
     else:
         logger.warning(
             "[%s] %s signal not actionable (holding_position=%s) @ %.6f (%s)",
             track_name, signal.action.value, holding_position, last_price, signal.reason,
         )
+        ledger.record_decision(last_price, "HOLD", f"non-actionable {signal.action.value}: {signal.reason}")
 
     ledger.set_state(state)
     ledger.record_equity(last_price, leveraged_equity_of(state, last_price))
+    ledger.commit()
     ledger.close()

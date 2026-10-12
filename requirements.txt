@@ -1,7 +1,45 @@
-ccxt>=4.3.0
-yfinance>=0.2.40
-requests>=2.31.0
-pyyaml>=6.0
-pandas>=2.2.0
-matplotlib>=3.8.0
-tzdata>=2024.1; sys_platform == "win32"
+# Pinned to exact versions (2026-10-12 audit finding #11): `>=` meant every one
+# of the ~96 ticks/day resolved and installed whatever the latest release was,
+# inside a CI job that has `contents: write` -- a bad or compromised upstream
+# release would run with push access to main.
+#
+# This file is the human-edited source. CI actually installs from
+# requirements.lock (--require-hashes), which also pins every transitive
+# dependency by hash. That lock is generated with `uv pip compile
+# requirements.txt --universal --generate-hashes -o requirements.lock` --
+# `--universal` is what makes this safe to generate on this Windows dev
+# machine and still install correctly on CI's ubuntu-latest runner: it
+# resolves and records hashes for every published platform's wheels (and the
+# sdist) of each pinned version, not just the one this machine happens to
+# download (a 2026-10-12 fix-check review correctly caught that an earlier
+# version of this comment claimed a plain `pip-compile --generate-hashes`
+# couldn't do this across platforms -- `--universal` is exactly the feature
+# that makes it possible). Verified: a clean venv installed requirements.lock
+# with `pip install --require-hashes` and ccxt's fetch_ohlcv worked against
+# live Kraken data from it.
+#
+# Regenerate requirements.lock (and re-run pip-audit against it) every time
+# this file changes. Bump deliberately (e.g. monthly), not passively.
+ccxt==4.5.85
+yfinance==1.7.0
+requests==2.34.2
+pyyaml==6.0.3
+pandas==3.0.6
+matplotlib==3.11.2
+tzdata==2026.4; sys_platform == "win32"
+
+# 2026-10-12: pip-audit found urllib3==2.7.0 (3 CVEs, PYSEC-2026-4175/6/7) and
+# multidict==6.7.1 (CVE-2026-104874) as transitive deps. ccxt==4.5.82 hard-pinned
+# both of those exact vulnerable versions (requires_dist: urllib3==2.7.0,
+# multidict==6.7.1) -- bumping ccxt here to 4.5.85 picks up its own bump to
+# urllib3==2.8.0 (patched), fixing the requests/urllib3 CVEs. multidict==6.7.1
+# is still hard-pinned by ccxt 4.5.85 itself (confirmed against its PyPI
+# metadata) -- can't be bumped without ccxt dropping that pin in a future
+# release; `pip install -r requirements.txt` with any explicit multidict>=6.9.1
+# line added here fails outright (confirmed: ResolutionImpossible). Actual
+# exposure is low: this codebase only ever calls ccxt's sync REST methods
+# (engine/data/crypto_source.py's fetch_ohlcv) -- confirmed neither multidict
+# nor aiohttp (multidict's only consumer here) ever gets imported by that path,
+# since those are pulled in for ccxt's async exchange variants, which this
+# project doesn't use. Re-check with `pip-audit -r requirements.txt` whenever
+# ccxt is next bumped.

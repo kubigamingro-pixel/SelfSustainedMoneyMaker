@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 venv/
 .env
+# per-machine Claude Code settings -- was untracked but NOT ignored (2026-10-12
+# audit finding #18), one `git add -A` away from being published to this public repo.
+.claude/settings.local.json

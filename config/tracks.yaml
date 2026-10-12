@@ -65,6 +65,11 @@ tracks:
     poll_minutes: 15
     loss_cap_pct: 50
     position_size_pct: 50
+    # 2026-10-12 fix-check review (findings #2/#3): pick_active_market() only
+    # checks this band when a market is first picked -- re-checked here at
+    # entry time too (engine/risk.py:passes_price_band), matching
+    # engine/data/prediction_source.py's PRICE_BAND constant.
+    price_band: [0.10, 0.90]
 
   # --- Leveraged variants (added 2026-10-01) ---
   # Same 4 strategies/markets above, same fee/slippage/position-sizing/loss-cap
@@ -201,6 +206,7 @@ tracks:
     position_size_pct: 50
     leverage: 2
     funding_rate_annual_pct: 10
+    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
 
   prediction_markets_momentum_10x:
     domain: prediction_markets
@@ -217,16 +223,16 @@ tracks:
     position_size_pct: 50
     leverage: 10
     funding_rate_annual_pct: 10
+    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
 
   # --- Regime-filtered momentum variants (added 2026-10-02) ---
   # Same 3 momentum markets above (not crypto_mean_reversion -- that's a
   # different base strategy), same cost/sizing assumptions, but the entry
   # signal is additionally gated: only buy a crossover if the slow SMA itself
   # is rising (engine/strategies/momentum_regime_filtered.py), a pattern
-  # adapted from freqtrade's "guard condition" approach. 1x only for now --
-  # stacking leverage with an untested filter would muddy whether any result
-  # is from the filter or the leverage. $10 starting capital, matching the
-  # original 1x tracks (not the leveraged $50 ones).
+  # adapted from freqtrade's "guard condition" approach. $10 starting capital,
+  # matching the original 1x tracks (not the leveraged $50 ones). 2x/10x
+  # leveraged regime variants were added the same day, below.
 
   crypto_momentum_regime:
     domain: crypto
@@ -270,6 +276,7 @@ tracks:
     poll_minutes: 15
     loss_cap_pct: 50
     position_size_pct: 50
+    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
 
   # --- Leveraged regime-filtered variants (added 2026-10-02) ---
   # Same 2x/10x/funding-rate pattern as the original leveraged tracks above,
@@ -356,6 +363,7 @@ tracks:
     position_size_pct: 50
     leverage: 2
     funding_rate_annual_pct: 10
+    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
 
   prediction_markets_momentum_regime_10x:
     domain: prediction_markets
@@ -372,3 +380,4 @@ tracks:
     position_size_pct: 50
     leverage: 10
     funding_rate_annual_pct: 10
+    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment

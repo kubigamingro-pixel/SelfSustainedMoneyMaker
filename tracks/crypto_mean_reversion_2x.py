@@ -6,6 +6,6 @@ TRACK_NAME = "crypto_mean_reversion_2x"
 
 def run(config: dict):
     def fetch():
-        return fetch_series(config["symbol"], exchange_id=config.get("exchange", "kraken"))
+        return fetch_series(config["symbol"], exchange_id=config.get("exchange", "kraken"), include_low=True)
 
     run_tick(TRACK_NAME, config, fetch)

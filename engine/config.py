@@ -46,6 +46,21 @@ def _validate_track(name: str, cfg: dict):
     if "funding_rate_annual_pct" in cfg and cfg["funding_rate_annual_pct"] < 0:
         raise ValueError(f"[{name}] funding_rate_annual_pct must be >= 0, got {cfg['funding_rate_annual_pct']}")
 
+    # price_band is optional (2026-10-12 fix-check review, findings #2/#3): only
+    # Polymarket tracks set it. A fix-check review found pick_active_market's
+    # price-band/end-date eligibility rules apply only at market-selection time --
+    # a market already held, or a flat track's current market, drifting outside
+    # the band afterward was never re-checked, and a market with no endDate
+    # skipped the date check entirely (fixed separately in prediction_source.py).
+    # This config key gates entries generically (engine/runner.py,
+    # engine/leveraged_runner.py), so a BUY is refused if the price has drifted
+    # outside the band by the time the signal fires, regardless of what the
+    # price was when the market was first picked.
+    if "price_band" in cfg:
+        band = cfg["price_band"]
+        if not (isinstance(band, (list, tuple)) and len(band) == 2 and band[0] < band[1]):
+            raise ValueError(f"[{name}] price_band must be [low, high] with low < high, got {band!r}")
+
 
 def load_tracks_config(path: Path = CONFIG_PATH) -> dict:
     data = yaml.safe_load(path.read_text())

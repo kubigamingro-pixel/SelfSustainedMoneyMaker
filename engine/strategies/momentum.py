@@ -43,10 +43,16 @@ class MomentumStrategy(Strategy):
         slow_prev = _sma(series[:-1], slow_window)
 
         crossed_up = fast_prev <= slow_prev and fast_now > slow_now
-        crossed_down = fast_prev >= slow_prev and fast_now < slow_now
 
         if crossed_up and not holding_position:
             return Signal(Action.BUY, f"fast SMA({fast_window})={fast_now:.6f} crossed above slow SMA({slow_window})={slow_now:.6f}")
-        if crossed_down and holding_position:
-            return Signal(Action.SELL, f"fast SMA({fast_window})={fast_now:.6f} crossed below slow SMA({slow_window})={slow_now:.6f}")
+        # 2026-10-12 audit finding #13: exit used to require the crossover to land
+        # exactly on the latest bar (fast_prev >= slow_prev and fast_now < slow_now).
+        # Ticks aren't perfectly reliable (observed gaps up to 147 minutes between
+        # 15-minute-interval ticks), so a missed or deduplicated bar right at the
+        # crossover left the position open through the entire next cycle. Exiting
+        # on state (fast below slow, regardless of which bar it first crossed on)
+        # behaves identically in the normal no-gap case and is robust to gaps.
+        if holding_position and fast_now < slow_now:
+            return Signal(Action.SELL, f"fast SMA({fast_window})={fast_now:.6f} below slow SMA({slow_window})={slow_now:.6f}")
         return Signal(Action.HOLD, "no crossover")

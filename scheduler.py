@@ -1,7 +1,9 @@
 """Runs all configured tracks. Each track's errors are isolated so one failing
 data source doesn't take down the others.
 
-In production this is driven by .github/workflows/tick.yml on a schedule.
+In production this is driven by .github/workflows/tick.yml, triggered every 15
+minutes by an external cron-job.org job calling workflow_dispatch via the GitHub
+REST API (GitHub's own `schedule` trigger proved unreliable -- see tick.yml).
 --once and --loop below are for local development/testing.
 
 Usage:
@@ -16,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from engine.config import load_tracks_config
+from engine.data import crypto_source, stocks_source
 from tracks import (
     crypto_mean_reversion,
     crypto_mean_reversion_2x,
@@ -81,6 +84,11 @@ def setup_logging():
 
 def run_all_once(config: dict, logger: logging.Logger):
     logger.info("=== tick start %s ===", datetime.now(timezone.utc).isoformat())
+    # 2026-10-12 audit finding #8: scoped to exactly one tick -- every track
+    # watching the same symbol this tick shares one real fetch (see
+    # engine/data/crypto_source.py's _cache docstring); next tick starts clean.
+    crypto_source.clear_cache()
+    stocks_source.clear_cache()
     for track_name, module in TRACK_MODULES.items():
         track_config = config.get(track_name)
         if not track_config:

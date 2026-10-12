@@ -78,9 +78,15 @@ def main():
         # ledger's own persisted value is authoritative once a track exists,
         # so return% stays correct even if the config file is edited later.
         ledger = Ledger(track_name, track_config["starting_capital"])
-        starting_capital = ledger.get_state().starting_capital
-        curve = ledger.equity_curve()
-        trades = ledger.trades()
+        state = ledger.get_state()
+        starting_capital = state.starting_capital
+        # Scoped to the current epoch (2026-10-12 audit finding #10): a reset no
+        # longer deletes prior rows, it tags them with the old epoch and starts a
+        # new one -- unscoped queries would otherwise merge pre- and post-reset
+        # history back together. Lifetime-across-all-epochs stats are a separate
+        # question; see Ledger.epochs() / reset_track.py's docstring.
+        curve = ledger.equity_curve(epoch=state.epoch)
+        trades = ledger.trades(epoch=state.epoch)
         ledger.close()
 
         if not curve:
