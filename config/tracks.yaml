@@ -8,8 +8,8 @@ tracks:
     exchange: kraken
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 0.26        # Kraken taker fee
     slippage_pct: 0.05
@@ -28,9 +28,9 @@ tracks:
     exchange: kraken
     strategy: mean_reversion
     strategy_params:
-      rsi_period: 14
-      oversold: 30
-      overbought: 70
+      rsi_period: 21
+      oversold: 20
+      overbought: 80
     starting_capital: 10.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -43,8 +43,8 @@ tracks:
     symbol: SPY
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 0.0           # modern brokers are commission-free; modeled for realism later
     slippage_pct: 0.02
@@ -57,8 +57,8 @@ tracks:
     symbol: null            # resolved at runtime: highest-volume active Polymarket market
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 2.0             # Polymarket taker-side spread/fee approximation
     slippage_pct: 0.5
@@ -95,8 +95,8 @@ tracks:
     exchange: kraken
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -112,8 +112,8 @@ tracks:
     exchange: kraken
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -129,9 +129,9 @@ tracks:
     exchange: kraken
     strategy: mean_reversion
     strategy_params:
-      rsi_period: 14
-      oversold: 30
-      overbought: 70
+      rsi_period: 21
+      oversold: 20
+      overbought: 80
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -147,9 +147,9 @@ tracks:
     exchange: kraken
     strategy: mean_reversion
     strategy_params:
-      rsi_period: 14
-      oversold: 30
-      overbought: 70
+      rsi_period: 21
+      oversold: 20
+      overbought: 80
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -164,8 +164,8 @@ tracks:
     symbol: SPY
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.0
     slippage_pct: 0.02
@@ -180,8 +180,8 @@ tracks:
     symbol: SPY
     strategy: momentum
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.0
     slippage_pct: 0.02
@@ -191,39 +191,52 @@ tracks:
     leverage: 10
     funding_rate_annual_pct: 10
 
-  prediction_markets_momentum_2x:
-    domain: prediction_markets
-    symbol: null
-    strategy: momentum
-    strategy_params:
-      fast_window: 5
-      slow_window: 20
-    starting_capital: 50.0
-    fee_pct: 2.0
-    slippage_pct: 0.5
-    poll_minutes: 15
-    loss_cap_pct: 50
-    position_size_pct: 50
-    leverage: 2
-    funding_rate_annual_pct: 10
-    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
-
-  prediction_markets_momentum_10x:
-    domain: prediction_markets
-    symbol: null
-    strategy: momentum
-    strategy_params:
-      fast_window: 5
-      slow_window: 20
-    starting_capital: 50.0
-    fee_pct: 2.0
-    slippage_pct: 0.5
-    poll_minutes: 15
-    loss_cap_pct: 50
-    position_size_pct: 50
-    leverage: 10
-    funding_rate_annual_pct: 10
-    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
+  # 2026-10-19: prediction_markets_momentum_2x/10x PAUSED (not deleted -- see
+  # the original block preserved below, commented out). These two tracks were
+  # repeatedly cycling through loss-cap breach -> epoch reset every few ticks
+  # (8-12 resets since the last full reset, both deep in the hole each time),
+  # while leverage can only amplify a strategy's existing cost-driven expected
+  # value, never create an edge that isn't there -- and this project's own
+  # research program (audits/2026-10-12-full-strategy-search-audit-dossier.md,
+  # audits/2026-10-12-prediction-markets-final-report.md) found no edge in any
+  # strategy tested, on any asset, at any leverage. Scheduler.py already
+  # handles a missing config entry gracefully (skips with a log line, no
+  # error) -- removing these two from config is a clean, reversible pause; no
+  # code change needed. To re-enable, uncomment the block below.
+  #
+  # prediction_markets_momentum_2x:
+  #   domain: prediction_markets
+  #   symbol: null
+  #   strategy: momentum
+  #   strategy_params:
+  #     fast_window: 10
+  #     slow_window: 40
+  #   starting_capital: 50.0
+  #   fee_pct: 2.0
+  #   slippage_pct: 0.5
+  #   poll_minutes: 15
+  #   loss_cap_pct: 50
+  #   position_size_pct: 50
+  #   leverage: 2
+  #   funding_rate_annual_pct: 10
+  #   price_band: [0.10, 0.90]
+  #
+  # prediction_markets_momentum_10x:
+  #   domain: prediction_markets
+  #   symbol: null
+  #   strategy: momentum
+  #   strategy_params:
+  #     fast_window: 10
+  #     slow_window: 40
+  #   starting_capital: 50.0
+  #   fee_pct: 2.0
+  #   slippage_pct: 0.5
+  #   poll_minutes: 15
+  #   loss_cap_pct: 50
+  #   position_size_pct: 50
+  #   leverage: 10
+  #   funding_rate_annual_pct: 10
+  #   price_band: [0.10, 0.90]
 
   # --- Regime-filtered momentum variants (added 2026-10-02) ---
   # Same 3 momentum markets above (not crypto_mean_reversion -- that's a
@@ -240,8 +253,8 @@ tracks:
     exchange: kraken
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -254,8 +267,8 @@ tracks:
     symbol: SPY
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 0.0
     slippage_pct: 0.02
@@ -268,8 +281,8 @@ tracks:
     symbol: null
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 10.0
     fee_pct: 2.0
     slippage_pct: 0.5
@@ -288,8 +301,8 @@ tracks:
     exchange: kraken
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -305,8 +318,8 @@ tracks:
     exchange: kraken
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.26
     slippage_pct: 0.05
@@ -321,8 +334,8 @@ tracks:
     symbol: SPY
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.0
     slippage_pct: 0.02
@@ -337,8 +350,8 @@ tracks:
     symbol: SPY
     strategy: momentum_regime
     strategy_params:
-      fast_window: 5
-      slow_window: 20
+      fast_window: 10
+      slow_window: 40
     starting_capital: 50.0
     fee_pct: 0.0
     slippage_pct: 0.02
@@ -348,36 +361,43 @@ tracks:
     leverage: 10
     funding_rate_annual_pct: 10
 
-  prediction_markets_momentum_regime_2x:
-    domain: prediction_markets
-    symbol: null
-    strategy: momentum_regime
-    strategy_params:
-      fast_window: 5
-      slow_window: 20
-    starting_capital: 50.0
-    fee_pct: 2.0
-    slippage_pct: 0.5
-    poll_minutes: 15
-    loss_cap_pct: 50
-    position_size_pct: 50
-    leverage: 2
-    funding_rate_annual_pct: 10
-    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
-
-  prediction_markets_momentum_regime_10x:
-    domain: prediction_markets
-    symbol: null
-    strategy: momentum_regime
-    strategy_params:
-      fast_window: 5
-      slow_window: 20
-    starting_capital: 50.0
-    fee_pct: 2.0
-    slippage_pct: 0.5
-    poll_minutes: 15
-    loss_cap_pct: 50
-    position_size_pct: 50
-    leverage: 10
-    funding_rate_annual_pct: 10
-    price_band: [0.10, 0.90]  # see prediction_markets_momentum's comment
+  # 2026-10-19: prediction_markets_momentum_regime_2x/10x PAUSED too, same
+  # reasoning and same day as prediction_markets_momentum_2x/10x above (both
+  # Polymarket leveraged families showed the identical repeated loss-cap/
+  # epoch-reset churn -- momentum_regime_2x was at epoch 8, -47.73%;
+  # momentum_regime_10x at epoch 10, flat after its latest reset). Not
+  # deleted -- block preserved below, commented out; uncomment to re-enable.
+  #
+  # prediction_markets_momentum_regime_2x:
+  #   domain: prediction_markets
+  #   symbol: null
+  #   strategy: momentum_regime
+  #   strategy_params:
+  #     fast_window: 10
+  #     slow_window: 40
+  #   starting_capital: 50.0
+  #   fee_pct: 2.0
+  #   slippage_pct: 0.5
+  #   poll_minutes: 15
+  #   loss_cap_pct: 50
+  #   position_size_pct: 50
+  #   leverage: 2
+  #   funding_rate_annual_pct: 10
+  #   price_band: [0.10, 0.90]
+  #
+  # prediction_markets_momentum_regime_10x:
+  #   domain: prediction_markets
+  #   symbol: null
+  #   strategy: momentum_regime
+  #   strategy_params:
+  #     fast_window: 10
+  #     slow_window: 40
+  #   starting_capital: 50.0
+  #   fee_pct: 2.0
+  #   slippage_pct: 0.5
+  #   poll_minutes: 15
+  #   loss_cap_pct: 50
+  #   position_size_pct: 50
+  #   leverage: 10
+  #   funding_rate_annual_pct: 10
+  #   price_band: [0.10, 0.90]
